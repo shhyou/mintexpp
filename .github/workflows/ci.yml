@@ -15,15 +15,15 @@ jobs:
             experimental: true
     steps:
       - uses: actions/checkout@v3
-      - uses: Bogdanp/setup-racket@v1.9
+      - uses: Bogdanp/setup-racket@v1.9.1
         with:
           architecture: x64
           distribution: full
           variant: ${{ matrix.racket-variant }}
           version: ${{ matrix.racket-version }}
-      - name: Installing mintextpp and its dependencies
-        run: raco pkg install --no-docs --auto --name mintextpp
-      - name: Compiling mintextpp and building its docs
-        run: raco setup --check-pkg-deps --unused-pkg-deps mintextpp
-      - name: Testing mintextpp
-        run: raco test -x -p mintextpp
+      - name: Installing mintexpp and its dependencies
+        run: raco pkg install --no-docs --auto --name mintexpp
+      - name: Compiling mintexpp and building its docs
+        run: raco setup --check-pkg-deps --unused-pkg-deps mintexpp
+      - name: Testing mintexpp
+        run: raco test -x -p mintexpp
