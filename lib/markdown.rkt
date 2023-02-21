@@ -42,11 +42,11 @@
     [(? list? xs)
      (append* (map inline-handler xs))]
     [(italic content)
-     (list (apply emph '() (inline-handler content)))]
+     (list (apply emph (inline-handler content)))]
     [(bold content)
-     (list (apply textbf '() (inline-handler content)))]
+     (list (apply textbf (inline-handler content)))]
     [(code str)
-     (list (apply texttt '() (list str)))]
+     (list (texttt str))]
     [(link content dest title)
      (list
       ((rxexpr/app '() 'href '() (list dest))
@@ -68,16 +68,14 @@
      (converted-paragraph (inline-handler content))]
     [(itemization blockss style (and start-num (or 1 #f)))
      (apply (if start-num enumerate itemize)
-            '()
             (for/list ([content (in-list blockss)])
-              (apply item '() (flow-handler content))))]
+              (apply item (flow-handler content))))]
     [(blockquote content)
-     (apply lquote '() (flow-handler content))]
+     (apply lquote (flow-handler content))]
     [(code-block str lang)
-     (apply verbatim '() (list str))]
+     (apply verbatim (list str))]
     [(heading title (and depth (or 1 2 3)))
      (apply (vector-ref `#[#f ,section ,subsection ,subsubsection] depth)
-            '()
             (inline-handler title))]
     [(? thematic-break?)
      hrule]

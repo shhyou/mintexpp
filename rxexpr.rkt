@@ -16,12 +16,9 @@
          make-default-tag-proc
          rxexpr/app
 
-         (for-syntax rxwrapper rxwrapper? rxwrapper-internal-id
+         (for-syntax rxwrapper rxwrapper? rxwrapper-internal-fun rxwrapper-internal-id
                      stage-at-exp-srclocplus)
-         define-unary/loc
-         define-binary/loc
-         define-ternary/loc
-         (rename-out [define-ternary/loc define-trinary/loc])
+         define/loc
 
          SPLICE-TAG
          @
@@ -105,6 +102,9 @@
                                (rxexpr/app locs MULTIARG-APP-TAG attrs (cons self elements))))
   #:transparent)
 
+(define (apply-with-empty-locs internal-fun)
+  (λ args (apply internal-fun null args)))
+
 (begin-for-syntax
   ;; XXX TODO srcpluss's in the syntax properties may be combined from macro invocations
   (define (stage-at-exp-srclocplus srcplusss)
@@ -132,7 +132,7 @@
            #`'(#,(car assoc-loc) . #f)])))
     #`(list . #,locs))
 
-  (struct rxwrapper (internal-id)
+  (struct rxwrapper (internal-fun internal-id)
     #:property prop:procedure
     (λ (self stx)
       (syntax-parse stx
@@ -143,53 +143,48 @@
          (define srcpluss (syntax-property stx 'at-exp-srclocplus))
          (with-disappeared-uses (record-disappeared-uses #'tgt)
            (datum->syntax stx
-                          (list* (rxwrapper-internal-id self)
+                          (list* (rxwrapper-internal-fun self)
                                  (if srcpluss (stage-at-exp-srclocplus srcpluss) #'null)
                                  (syntax-e #'(args ...)))
                           stx))]))
-    #:transparent))
+    #:transparent)
 
-(define-syntax-parse-rule (define-unary/loc (~and (name:id . _)
-                                                  header:function-header)
+  (define-syntax-class (nary-locs-header ctxt-stx)
+    #:attributes (name internal-fun-id papp-fun-id internal-fun-header papp-header papp-expr)
+    [pattern (name:id loc:id . fmls:formals)
+      #:with internal-fun-id (format-id ctxt-stx "~a.mk" #'name #:source #'name)
+      #:with papp-fun-id (format-id ctxt-stx "~a.mk/locs" #'name #:source #'name)
+      #:with args #'(loc . fmls)
+      #:with internal-fun-header #'(internal-fun-id loc . fmls)
+      #:with papp-header #'(papp-fun-id . fmls)
+      #:with papp-expr (if (list? (syntax-e #'fmls))
+                                     #`(internal-fun-id null . fmls.params)
+                                     #`(apply internal-fun-id null . fmls.params))]
+    [pattern ((~var header* (nary-locs-header ctxt-stx)) loc:id . fmls:formals)
+      #:with name #'header*.name
+      #:with internal-fun-id #'header*.internal-fun-id
+      #:with papp-fun-id #'header*.papp-fun-id
+      #:with args #'(loc . fmls)
+      #:with internal-fun-header #'(header*.internal-fun-header loc . fmls)
+      #:with papp-header #'(header*.papp-header . fmls)
+      #:with papp-expr (if (list? (syntax-e #'fmls))
+                                     #`(header*.papp-expr null . fmls.params)
+                                     #`(apply header*.papp-expr null . fmls.params))])
+  )
+
+(define-syntax-parse-rule (define/loc (~var header (nary-locs-header #'here))
                             body-expr:expr
                             ...+)
-  #:with local-name (format-id #'here "~a.mk-rxexpr" #'header.name #:source #'header.name)
   (begin
-    (define (local-name . header.args)
+    (define header.internal-fun-header
       body-expr
       ...)
+    (define header.papp-header header.papp-expr)
     (define-syntax header.name
-      (rxwrapper (quote-syntax local-name)))))
-
-(define-syntax-parse-rule (define-binary/loc (~and ((name:id . _) . _)
-                                                   header:function-header
-                                                   (header*:function-header . _))
-                            body-expr:expr
-                            ...+)
-  #:with local-name (format-id #'here "~a.mk-rxexpr" #'header.name #:source #'header.name)
-  (begin
-    (define ((local-name . header*.args) . header.args)
-      body-expr
-      ...)
-    (define-syntax header.name
-      (rxwrapper (quote-syntax local-name)))))
-
-(define-syntax-parse-rule (define-ternary/loc (~and (((name:id . _) . _) . _)
-                                                    header:function-header
-                                                    (header*:function-header . _)
-                                                    ((header**:function-header . _) . _))
-                            body-expr:expr
-                            ...+)
-  #:with local-name (format-id #'here "~a.mk-rxexpr" #'header.name #:source #'header.name)
-  (begin
-    (define (((local-name . header**.args) . header*.args) . header.args)
-      body-expr
-      ...)
-    (define-syntax header.name
-      (rxwrapper (quote-syntax local-name)))))
+      (rxwrapper (quote-syntax header.internal-fun-id) (quote-syntax header.papp-fun-id)))))
 
 (define SPLICE-TAG '@)
-(define-unary/loc (@ locs . elements) (rxexpr locs SPLICE-TAG '() elements))
+(define/loc (@ locs . elements) (rxexpr locs SPLICE-TAG '() elements))
 
 ;; Splice the '@' tags while preserving list-ness
 ;; That is, if the input is a list then the output will be a list
