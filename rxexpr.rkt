@@ -2,7 +2,7 @@
 
 (require racket/match
          (for-syntax racket/base racket/match racket/syntax syntax/transformer
-                     syntax/parse syntax/parse/lib/function-header
+                     syntax/parse "function-header.rkt"
                      "srclocplus.rkt")
          syntax/parse/define
          "srclocplus.rkt")
@@ -151,16 +151,16 @@
 
   (define-syntax-class (nary-locs-header ctxt-stx)
     #:attributes (name internal-fun-id papp-fun-id internal-fun-header papp-header papp-expr)
-    [pattern (name:id loc:id . fmls:formals)
+    [pattern (name:id loc:id . fmls:formals+app)
       #:with internal-fun-id (format-id ctxt-stx "~a.mk" #'name #:source #'name)
       #:with papp-fun-id (format-id ctxt-stx "~a.mk/locs" #'name #:source #'name)
       #:with args #'(loc . fmls)
       #:with internal-fun-header #'(internal-fun-id loc . fmls)
       #:with papp-header #'(papp-fun-id . fmls)
       #:with papp-expr (if (list? (syntax-e #'fmls))
-                                     #`(internal-fun-id null . fmls.params)
-                                     #`(apply internal-fun-id null . fmls.params))]
-    [pattern ((~var header* (nary-locs-header ctxt-stx)) loc:id . fmls:formals)
+                           #`(internal-fun-id null . fmls.apps)
+                           #`(apply internal-fun-id null . fmls.apps))]
+    [pattern ((~var header* (nary-locs-header ctxt-stx)) loc:id . fmls:formals+app)
       #:with name #'header*.name
       #:with internal-fun-id #'header*.internal-fun-id
       #:with papp-fun-id #'header*.papp-fun-id
@@ -168,8 +168,8 @@
       #:with internal-fun-header #'(header*.internal-fun-header loc . fmls)
       #:with papp-header #'(header*.papp-header . fmls)
       #:with papp-expr (if (list? (syntax-e #'fmls))
-                                     #`(header*.papp-expr null . fmls.params)
-                                     #`(apply header*.papp-expr null . fmls.params))])
+                           #`(header*.papp-expr null . fmls.apps)
+                           #`(apply header*.papp-expr null . fmls.apps))])
   )
 
 (define-syntax-parse-rule (define/loc (~var header (nary-locs-header #'here))
