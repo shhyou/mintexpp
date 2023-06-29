@@ -3,9 +3,9 @@
 (require racket/match
          (for-syntax racket/base racket/list racket/match racket/syntax syntax/transformer
                      syntax/parse "function-header.rkt"
-                     "srclocplus.rkt")
+                     mintexpp/srclocplus)
          syntax/parse/define
-         "srclocplus.rkt")
+         mintexpp/srclocplus)
 
 (provide (struct-out rxexpr)
          rxexpr-guard

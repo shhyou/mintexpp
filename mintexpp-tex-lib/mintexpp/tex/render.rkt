@@ -4,10 +4,10 @@
          racket/string
          racket/set
          racket/match
-         "../rxexpr.rkt"
-         "../top.rkt"
-         "../srclocplus.rkt"
-         "../at-reader.rkt")
+         mintexpp/rxexpr
+         mintexpp/top
+         mintexpp/srclocplus
+         mintexpp/at-reader)
 
 (provide pretty-print-newline-tex-commands
          is-pretty-print-newline-tex-command?

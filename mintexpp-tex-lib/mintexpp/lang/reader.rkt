@@ -1,7 +1,7 @@
 (module reader syntax/module-reader
 
   ;; module path
-  mintexpp/doc
+  mintexpp/tex/doc
 
   #:info mintexpp-info
 

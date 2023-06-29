@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require (for-syntax racket/base racket/syntax syntax/parse)
-         "../rxexpr.rkt" "../top.rkt")
+         mintexpp/rxexpr mintexpp/top)
 
 (provide define-constant-commands
          define-function-commands

@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require (only-in "rxexpr.rkt" make-default-tag-proc rxexpr/app)
+(require (only-in "private/rxexpr.rkt" make-default-tag-proc rxexpr/app)
          (for-syntax racket/base syntax/stx)
          racket/struct)
 
@@ -28,4 +28,4 @@
    'mouse-over-tooltips (vector (syntax-local-introduce id)
                                 (sub1 (syntax-position id))
                                 (sub1 (+ (syntax-position id) (syntax-span id)))
-                                (format "LaTeX: ~a" (syntax-e id)))))
+                                (format "~a" (syntax-e id)))))

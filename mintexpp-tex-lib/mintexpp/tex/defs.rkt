@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "rxexpr.rkt" "top.rkt" "at-reader.rkt")
+(require mintexpp/rxexpr mintexpp/top mintexpp/at-reader)
 
 (provide
  (except-out (all-defined-out)

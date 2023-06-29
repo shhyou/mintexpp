@@ -3,11 +3,12 @@
 (require racket/list
          racket/match
 
-         "../rxexpr.rkt"
-         "../top.rkt"
-         "../srclocplus.rkt")
+         mintexpp/srclocplus
+         "private/rxexpr.rkt"
+         "top.rkt")
 
-(provide atomic-printable-value?
+(provide (all-from-out "private/rxexpr.rkt")
+         atomic-printable-value?
          remove-nonprintable-value
          stringify-rxexpr
          insert-newlines-by-source-location

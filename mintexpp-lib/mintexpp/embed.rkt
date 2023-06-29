@@ -6,8 +6,8 @@
 
          racket/format
 
-         "../rxexpr.rkt"
-         "../top.rkt")
+         "private/rxexpr.rkt"
+         "top.rkt")
 
 (provide
  current-embed-tag

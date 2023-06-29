@@ -1,10 +1,9 @@
 #lang racket/base
 
 (require "rxexpr.rkt"
-         "lib/rxexpr.rkt"
          "top.rkt"
-         "at-reader.rkt"
-         "srclocplus.rkt"
+         mintexpp/at-reader
+         mintexpp/srclocplus
          (for-syntax racket/base syntax/parse)
          syntax/wrap-modbeg
          racket/syntax-srcloc

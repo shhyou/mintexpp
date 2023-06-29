@@ -10,9 +10,9 @@
 
          commonmark/parse commonmark/struct
 
-         "../rxexpr.rkt"
-         "../tex.rkt"
-         "embed.rkt")
+         mintexpp/rxexpr
+         mintexpp/embed
+         "defs.rkt")
 
 (provide
  *PRINT-ENRICHING-DEBUG-LOG*
