@@ -13,7 +13,9 @@
                      #:cache? [cache? #f]
                      #:quiet? [quiet? #t])
   (define output-file
-    (path-replace-extension file-name (dynamic-require file-name 'extension)))
+    (path-replace-extension
+     file-name
+     (dynamic-require `(submod ,file-name ,MINTEXPP-SUBMOD) 'extension)))
   (define-values (base name dir?)
     (split-path file-name))
   (define zo-file
@@ -32,7 +34,7 @@
                (path->string (find-relative-path base output-file))))]
     [doc
      (define render-from-template
-       (dynamic-require file-name 'render-from-template))
+       (dynamic-require `(submod ,file-name ,MINTEXPP-SUBMOD) 'render-from-template))
      (define rendered-result
        (with-handlers ([exn:fail? (λ (e)
                                     (define new-error-message

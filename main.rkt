@@ -14,6 +14,7 @@
 (provide
  doc-wrap-module-begin
  doc-main-module-begin
+ MINTEXPP-SUBMOD
  default-root
  default-main
  default-extension
@@ -39,6 +40,9 @@
  report-document-errors
  report-and-terminate-when-error!
  )
+
+(define MINTEXPP-SUBMOD 'mintexpp)
+(define-for-syntax MINTEXPP-SUBMOD 'mintexpp)
 
 (define (default-root locs . elements)
   (rxexpr locs 'root '() elements))
@@ -132,14 +136,15 @@
      (quasisyntax/loc stx
        (#%plain-module-begin
         #,require-config-mod
-        (provide doc the-extension the-render-from-template the-main)
+        (module* #,MINTEXPP-SUBMOD #f
+          (provide doc the-extension the-render-from-template the-main))
         content ...
         (define raw-doc (get-current-doc))
         (define flat-doc (splice-content raw-doc))
         (define clean-doc (remove-nonprintable-value flat-doc))
         (define doc (apply the-root '() clean-doc))
         (module* main racket/base
-          (require (submod ".."))
+          (require (submod ".." #,MINTEXPP-SUBMOD))
           (void (main doc)))))]))
 
 (define-syntax doc-wrap-module-begin
@@ -228,7 +233,7 @@
 
 (define (load-document file-name)
   (call-with-load-exception-handlers
-   (λ () (dynamic-require file-name 'doc))))
+   (λ () (dynamic-require `(submod ,file-name ,MINTEXPP-SUBMOD) 'doc))))
 
 (define (display-error/replace-message new-message old-exn)
   ((error-display-handler) new-message (exn:fail new-message (exn-continuation-marks old-exn))))
