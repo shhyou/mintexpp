@@ -3,6 +3,8 @@
 (require "rxexpr.rkt"
          "lib/rxexpr.rkt"
          "top.rkt"
+         "at-reader.rkt"
+         "srclocplus.rkt"
          (for-syntax racket/base syntax/parse)
          syntax/wrap-modbeg
          racket/syntax-srcloc
@@ -182,13 +184,15 @@
      (if maybe-tag
          (check-list all-elems
                      "" ;; prev
-                     (cons `(rxexpr/nested ,val ,maybe-tag ,maybe-attrs ,all-elems)
+                     (cons `(rxexpr/nested ,locs ,val ,maybe-tag ,maybe-attrs ,all-elems)
                            ctxt))
          (fail-next))]
     [(rxexpr locs tag attrs elems)
      (check-list elems
                  "" ;; prev
-                 (cons `(rxexpr ,tag ,attrs ,elems) ctxt))]
+                 (if (eq? tag SPLICE-TAG)
+                     ctxt
+                     (cons `(rxexpr ,locs ,tag ,attrs ,elems) ctxt)))]
     [_
      (list (hash 'value val 'context ctxt))]))
 
@@ -253,6 +257,19 @@
                 [else (string-append "error: " (exn-message e))])
           e)]
         ['syntax
+         (define (format-locs locs)
+           (define loc (or (at-exp-cmd-loc locs)
+                           (at-exp-datums-loc locs)
+                           (at-exp-lines-loc locs)))
+           (cond
+             [(not loc) ""]
+             [else
+              (define src
+                (if (srclocplus-source loc)
+                    (let-values ([(base name dir?) (split-path (srclocplus-source loc))])
+                      name)
+                    "?"))
+              (format "~a:~a:~a:" src (srclocplus-line loc) (srclocplus-column loc))]))
          (eprintf "error near ~a: " (srcloc->string (syntax-srcloc (errinfo-loc err))))
          (eprintf "non-printable value: ~s\n" (hash-ref (errinfo-data err) 'value))
          (when (not (null? (hash-ref (errinfo-data err) 'context)))
@@ -261,14 +278,16 @@
              (match frame
                [`(list ,prev ,next)
                 (format "   ~a●~a\n" prev next)]
-               [`(rxexpr/nested ,orig ,tag ,attrs ,all-elems)
+               [`(rxexpr/nested ,locs ,orig ,tag ,attrs ,all-elems)
+                (define formatted-locs (format-locs locs))
                 (if (null? attrs)
-                    (eprintf "   (~a ●)\n" tag)
-                    (eprintf "   (~a ~s ●)\n" tag attrs))]
-               [`(rxexpr ,tag ,attrs ,elems)
+                    (eprintf "   ~a(~a ●)\n" formatted-locs tag)
+                    (eprintf "   ~a(~a ~s ●)\n" formatted-locs tag attrs))]
+               [`(rxexpr ,locs ,tag ,attrs ,elems)
+                (define formatted-locs (format-locs locs))
                 (if (null? attrs)
-                    (eprintf "   (~a ●)\n" tag)
-                    (eprintf "   (~a ~s ●)\n" tag attrs))])))])))
+                    (eprintf "   ~a(~a ●)\n" formatted-locs tag)
+                    (eprintf "   ~a(~a ~s ●)\n" formatted-locs tag attrs))])))])))
 
 (define (report-and-terminate-when-error!)
   (when (some-document-has-error?)

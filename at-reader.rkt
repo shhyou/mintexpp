@@ -6,7 +6,12 @@
          mintexpp-read-syntax
 
          mintexpp-read-inside
-         mintexpp-read-syntax-inside)
+         mintexpp-read-syntax-inside
+
+         at-exp-cmd-loc
+         at-exp-datums-loc
+         at-exp-lines-loc
+         at-exp-loc-of)
 
 (define (char->symbol ch input)
   (values 1 (string->symbol (string ch))))
@@ -53,6 +58,18 @@
   (((readtable-cached
      (lambda (rt) (make-at-reader #:inside? #t #:command-char command-char #:readtable rt))))
    src inp))
+
+(define (at-exp-cmd-loc locs)       (at-exp-loc-of locs 'cmd))
+(define (at-exp-datums-loc locs)    (at-exp-loc-of locs 'datums))
+(define (at-exp-lines-loc locs)     (at-exp-loc-of locs 'lines))
+
+(define (at-exp-loc-of locs key)
+  (define the-loc (assoc key locs))
+  (if (and the-loc ;; key exist
+           (cdr the-loc) ;; srclocplus is not #f
+           (> (srclocplus-span (cdr the-loc)) 0))
+      (cdr the-loc)
+      #f))
 
 ;; ============================================================================
 ;; Implements the @-reader macro for embedding text in Racket code.
@@ -596,14 +613,18 @@
            ;; continue with lines, {...}
            [(call-with-srclocp get-lines and-list)
             => (λ (the-lines/src)
-                 (loop processed-stx #f
+                 ;; HACK: keep the innermost cmd srcloc as all of the cmd srcloc
+                 ;; TOFIX: use the srcloc of the entire @-exp
+                 (loop processed-stx cmd-srcp
                        #f #f
                        (list-ref the-lines/src 0) (list-ref the-lines/src 1)))]
            ;; continue with datums and lines, [...]{...}
            [(call-with-srclocp get-datums and-list)
             => (λ (the-datums/src)
                  (define the-lines/src (call-with-srclocp get-lines list))
-                 (loop processed-stx #f
+                 ;; HACK: keep the innermost cmd srcloc as all of the cmd srcloc
+                 ;; TOFIX: use the srcloc of the entire @-exp
+                 (loop processed-stx cmd-srcp
                        (list-ref the-datums/src 0) (list-ref the-datums/src 1)
                        (list-ref the-lines/src 0) (list-ref the-lines/src 1)))]
            [else

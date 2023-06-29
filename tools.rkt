@@ -34,9 +34,27 @@
      (define render-from-template
        (dynamic-require file-name 'render-from-template))
      (define rendered-result
-       (render-from-template doc))
+       (with-handlers ([exn:fail? (λ (e)
+                                    (define new-error-message
+                                      (format "Exception raised when rendering ~a\n message: ~a"
+                                              file-name
+                                              (exn-message e)))
+                                    ((error-display-handler)
+                                     new-error-message
+                                     (exn:fail new-error-message (exn-continuation-marks e)))
+                                    "")])
+         (render-from-template doc)))
      (with-output-to-file output-file #:exists 'truncate
-       (λ () (write-string rendered-result)))]
+       (λ ()
+         (let loop ([rendered-result rendered-result])
+           (cond
+             [(string? rendered-result)
+              (write-string rendered-result)]
+             [(null? rendered-result)
+              (void)]
+             [(pair? rendered-result)
+              (loop (car rendered-result))
+              (loop (cdr rendered-result))]))))]
     [else (void)]))
 
 (module* main #f
@@ -46,12 +64,14 @@
   (define-namespace-anchor ns-here)
 
   (define *cache*? #f)
+  (define *load-errortrace? #f)
 
   (define file-names
     (command-line
      #:program (short-program+command-name)
      #:once-each
      ["--cache" "Skip rendered files" (set! *cache*? #t)]
+     ["--errortrace" "Load errortrace" (set! *load-errortrace? #t)]
      #:args file1
      (if (not (null? file1))
          file1
@@ -79,6 +99,8 @@
            (define-values (doc-errs relative-extra-deps)
              (parameterize ([current-namespace (make-base-empty-namespace)])
                (namespace-attach-module (namespace-anchor->namespace ns-here) 'racket)
+               (when *load-errortrace?
+                 (dynamic-require 'errortrace #f))
                (printf "Rendering ~a\n" (car file-names))
                ((dynamic-require 'mintexpp 'clear-extra-dependencies!))
                (render-file resolved-file-name #:quiet? #f #:cache? *cache*?)

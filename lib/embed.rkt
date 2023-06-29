@@ -70,7 +70,7 @@
     [(rxexpr _ _ '() '()) #t]
     [_ #f]))
 
-(define (embed-stringified-rxexpr x)
+(define (embed-stringified-rxexpr x #:stop? [stop? (λ (x) #f)])
   (define embedding-cache (make-hash))
   (define (do-embed-stringified-rxexpr x)
     (match x
@@ -82,8 +82,7 @@
       [(rxexpr locs tag attrs elements)
        (define new-rxexpr
          (cond
-           [(attr-ref attrs 'verbatim (λ () #f))
-            x]
+           [(stop? x) x]
            [else
             (define new-elements
               (for/list ([e (in-list elements)])

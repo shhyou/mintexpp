@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "rxexpr.rkt" "top.rkt" "srclocplus.rkt")
+(require "rxexpr.rkt" "top.rkt" "at-reader.rkt")
 
 (provide
  (except-out (all-defined-out)
@@ -22,7 +22,10 @@
 (define/loc (chapter* locs . elements)
   (@ (free-literal 'phantomsection)
      (rxexpr locs 'chapter* '() elements)
-     (rxexpr '() 'addcontentsline '((param "toc}{chapter")) elements)))
+     (apply
+      ((rxexpr/app '() 'addcontentsline '() '("toc"))
+       '() "chapter")
+      '() elements)))
 
 (define/loc (section locs . elements)
   (rxexpr locs 'section '() elements))
@@ -69,8 +72,14 @@
 (define/loc (textsl locs . elements)
   (rxexpr locs 'textsl '() elements))
 
-(define/loc (enumerate locs #:option [option/#f #f] . elements)
-  (rxexpr locs 'enumerate (if option/#f `((option ,option/#f)) '()) elements))
+(define/loc (enumerate locs . elements)
+  (cond
+    [(at-exp-datums-loc locs)
+     (unless (not (null? elements))
+       (error 'enumerate "expected the style of enumerate but given no arguments"))
+     (rxexpr locs 'enumerate `((datums ,(car elements))) (cdr elements))]
+    [else
+     (rxexpr locs 'enumerate '() elements)]))
 
 (define/loc (itemize locs . elements)
   (rxexpr locs 'itemize '() elements))
@@ -82,7 +91,7 @@
   (rxexpr locs 'quote '() elements))
 
 (define/loc (verbatim locs . elements)
-  (rxexpr locs 'verbatim '((verbatim #t)) elements))
+  (rxexpr locs 'verbatim '((markdown? #f)) elements))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -91,9 +100,8 @@
 (define (get-documentclass-options) the-documentclass-options)
 (define (get-documentclass-name) the-documentclass-name)
 (define/loc (documentclass locs maybe-option . rest)
-  (define datum-loc (assoc 'datums locs))
   (cond
-    [(and datum-loc (cdr datum-loc) (> (srclocplus-span (cdr datum-loc)) 0))
+    [(at-exp-datums-loc locs)
      (set! the-documentclass-options (format "[~a]" maybe-option))
      (set! the-documentclass-name (car rest))]
     [else
@@ -101,9 +109,8 @@
   '())
 
 (define/loc (usepackage locs opt-or-name . names)
-  (define datum-loc (assoc 'datums locs))
-  (if (and datum-loc (cdr datum-loc) (> (srclocplus-span (cdr datum-loc)) 0))
-      (rxexpr locs 'usepackage `((option ,opt-or-name)) names)
+  (if (at-exp-datums-loc locs)
+      (rxexpr locs 'usepackage `((datums ,opt-or-name)) names)
       (rxexpr locs 'usepackage '() (cons opt-or-name names))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -112,7 +119,7 @@
 ;; handy commands
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define |\\| (rxexpr '() '|\\| '() '()))
+(define |\\| (free-literal '|\\|))
 (define noindent (free-literal 'noindent))
 (define clearpage (free-literal 'clearpage))
 (define newpage (free-literal 'newpage))
@@ -130,10 +137,10 @@
 (define Huge (free-literal 'Huge))
 
 (define/loc ($ locs . elements)
-  (rxexpr locs '$ '((verbatim #t)) elements))
+  (rxexpr locs '$ '((markdown? #f)) elements))
 
 (define/loc ($$ locs . elements)
-  (rxexpr locs '$$ '((verbatim #f)) elements))
+  (rxexpr locs '$$ '((markdown? #f)) elements))
 
 (define/loc (center locs . elements)
   (rxexpr locs 'center '() elements))
@@ -144,11 +151,22 @@
 (define/loc (hspace locs . elements)
   (rxexpr locs 'hspace '() elements))
 
+(define/loc ((newcommand locs name) locs2 . commands)
+  (define newcommand-name
+    (rxexpr/app locs 'newcommand '() (list name)))
+  (if (at-exp-datums-loc locs2)
+      (apply newcommand-name locs2 #:datums (car commands) (cdr commands))
+      (apply newcommand-name locs2 commands)))
+
 (define/loc ((renewcommand locs name) locs2 . commands)
-  (rxexpr locs2 'renewcommand `((param ,name)) commands))
+  (define renewcommand-name
+    (rxexpr/app locs 'renewcommand '() (list name)))
+  (if (at-exp-datums-loc locs2)
+      (apply renewcommand-name locs2 #:datums (car commands) (cdr commands))
+      (apply renewcommand-name locs2 commands)))
 
 (define/loc ((setlength locs name) locs2 . num)
-  (rxexpr locs 'setlength `((param ,name)) num))
+  (apply (rxexpr/app locs 'setlength '() (list name)) locs2 num))
 
 (define/loc ((setcounter locs name) locs2 . num)
-  (rxexpr locs 'setcounter `((param ,name)) num))
+  (apply (rxexpr/app locs 'setcounter '() (list name)) locs2 num))

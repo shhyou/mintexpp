@@ -17,7 +17,8 @@
 (provide
  *PRINT-ENRICHING-DEBUG-LOG*
 
- enrich-control-attr
+ ENRICH-CTL-ATTR
+ is-enrichable-rxexpr?
  default-inline-handler
  default-block-handler
  default-flow-handler
@@ -32,7 +33,11 @@
 (define-logger markdown-enriching)
 
 (define *PRINT-ENRICHING-DEBUG-LOG* (make-parameter #f))
-(define enrich-control-attr (make-parameter 'verbatim))
+(define ENRICH-CTL-ATTR 'markdown?)
+
+(define (is-enrichable-rxexpr? x)
+  (and (rxexpr? x)
+       (attr-ref (rxexpr-attrs x) ENRICH-CTL-ATTR (λ () #t))))
 
 ;; inline-handler : inline? -> (listof stringified-rxexpr?)
 (define (default-inline-handler inline-handler x)
@@ -68,12 +73,16 @@
      (converted-paragraph (inline-handler content))]
     [(itemization blockss style (and start-num (or 1 #f)))
      (apply (if start-num enumerate itemize)
-            (for/list ([content (in-list blockss)])
-              (apply item (flow-handler content))))]
+            (append*
+             (if (eq? style 'loose)
+                 '()
+                 (list ((setlength "\\itemsep") "0em") "\n"))
+             (for/list ([content (in-list blockss)])
+               (list (apply item (flow-handler content)) "\n"))))]
     [(blockquote content)
      (apply lquote (flow-handler content))]
     [(code-block str lang)
-     (apply verbatim (list str))]
+     (rxexpr-attr-remove (verbatim str) ENRICH-CTL-ATTR)]
     [(heading title (and depth (or 1 2 3)))
      (apply (vector-ref `#[#f ,section ,subsection ,subsubsection] depth)
             (inline-handler title))]
@@ -124,27 +133,31 @@
   ((current-flow-handler) handle-flow handle-inline blocks))
 
 (define (enrich-with-markdown rx)
-  (define ctlattr (enrich-control-attr))
-
   (log-markdown-enriching-info "[~a] start embedding" (date->string (current-date) #t))
   (define-values (rx-id embedding)
     (parameterize ([current-embedding (make-hash)])
-      (define rx-id (embed-stringified-rxexpr rx))
+      (define rx-id
+        (embed-stringified-rxexpr rx
+                                  #:stop? (λ (x)
+                                            (not (is-enrichable-rxexpr? x)))))
       (values rx-id (current-embedding))))
   (log-markdown-enriching-info "[~a] finished embedding" (date->string (current-date) #t))
 
   (define verbatim-embedding
     (for/hash ([(embed-id x) (in-hash embedding)]
-               #:when (or (not (rxexpr? x))
-                          (and ctlattr (attr-ref (rxexpr-attrs x) ctlattr (λ () #f)))))
-      (values embed-id x)))
+               #:when (not (is-enrichable-rxexpr? x)))
+      (values embed-id
+              (if (rxexpr? x)
+                  (rxexpr (rxexpr-locs x)
+                          (rxexpr-tag x)
+                          (attr-remove (rxexpr-attrs x) ENRICH-CTL-ATTR)
+                          (rxexpr-elements x))
+                  x))))
 
   (log-markdown-enriching-info "[~a] start enriching markdown" (date->string (current-date) #t))
   (define enriched-embedding
     (for/hash ([(embed-id x) (in-hash embedding)]
-               #:when (or (not ctlattr)
-                          (and (rxexpr? x)
-                               (not (attr-ref (rxexpr-attrs x) ctlattr (λ () #f))))))
+               #:when (is-enrichable-rxexpr? x))
       (define all-str (apply string-append (rxexpr-elements x)))
       (define markdown-doc (string->document all-str))
       (when (*PRINT-ENRICHING-DEBUG-LOG*)
@@ -160,7 +173,7 @@
       (values embed-id
               (rxexpr (rxexpr-locs x)
                       (rxexpr-tag x)
-                      (rxexpr-attrs x)
+                      (attr-remove (rxexpr-attrs x) ENRICH-CTL-ATTR)
                       enriched-elements))))
   (log-markdown-enriching-info "[~a] finished enriching" (date->string (current-date) #t))
 

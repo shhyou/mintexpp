@@ -4,7 +4,7 @@
          "top.rkt"
          "rxexpr.rkt"
          "tex.rkt"
-         (for-syntax racket/base))
+         (for-syntax racket/base "at-reader.rkt"))
 
 (provide
  (except-out (all-from-out racket/base)
@@ -28,7 +28,10 @@
 (define-syntax (rx/app-locs-and-quote-splicing-string-app stx)
   (syntax-case stx ()
     [(_ content other-datum ...)
-     (string? (syntax-e #'content))
+     (or (string? (syntax-e #'content))
+         (let ([srcpluss (syntax-property stx 'at-exp-srclocplus)])
+           (and (vector? srcpluss)
+                (not (at-exp-cmd-loc (vector->list srcpluss))))))
      (syntax/loc stx (@ content other-datum ...))]
     [(_ app-tgt app-expr ...)
      (let ()

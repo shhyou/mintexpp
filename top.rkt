@@ -23,4 +23,9 @@
 
 (define-syntax (literal-top stx)
   (define id (stx-cdr stx))
-  (datum->syntax #'here `(,#'free-literal (,#'quote ,id)) stx))
+  (syntax-property
+   (datum->syntax #'here `(,#'free-literal (,#'quote ,id)) stx)
+   'mouse-over-tooltips (vector (syntax-local-introduce id)
+                                (sub1 (syntax-position id))
+                                (sub1 (+ (syntax-position id) (syntax-span id)))
+                                (format "LaTeX: ~a" (syntax-e id)))))

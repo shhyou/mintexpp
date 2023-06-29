@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require racket/match
-         (for-syntax racket/base racket/match racket/syntax syntax/transformer
+         (for-syntax racket/base racket/list racket/match racket/syntax syntax/transformer
                      syntax/parse "function-header.rkt"
                      "srclocplus.rkt")
          syntax/parse/define
@@ -10,7 +10,10 @@
 (provide (struct-out rxexpr)
          rxexpr-guard
          attr-ref
+         attr-set
+         attr-remove
          attrs->hash
+         rxexpr-attr-remove
 
          MULTIARG-APP-TAG
          make-default-tag-proc
@@ -64,9 +67,26 @@
      (fail)]
     [else fail]))
 
+(define (attr-remove attrs key)
+  (for/list ([attr (in-list attrs)]
+             #:when (not (eq? (car attr) key)))
+    attr))
+
+(define (attr-set attrs key new-value)
+  (cons (list key new-value)
+        (attr-remove attrs key)))
+
 (define (attrs->hash attrs)
   (for/hash ([attr (in-list attrs)])
     (values (car attr) (cadr attr))))
+
+(define (rxexpr-attr-remove x key)
+  (if (rxexpr? x)
+      (rxexpr (rxexpr-locs x)
+              (rxexpr-tag x)
+              (attr-remove (rxexpr-attrs x) key)
+              (rxexpr-elements x))
+      x))
 
 (struct rxexpr (locs tag attrs elements)
   #:guard rxexpr-guard
@@ -102,8 +122,17 @@
                                (rxexpr/app locs MULTIARG-APP-TAG attrs (cons self elements))))
   #:transparent)
 
-(define (apply-with-empty-locs internal-fun)
-  (λ args (apply internal-fun null args)))
+(define (make-locs-assoc-list . args)
+  (let loop ([args args])
+    (match args
+      ['() '()]
+      [(list* (? symbol? name) #f args)
+       (cons `(,name . #f) (loop args))]
+      [(list* (? symbol? name) (? syntax? loc-stx) diff args)
+       (cons `(,name . ,(if (exact-integer? diff)
+                            (syntax+diff->srclocplus loc-stx (srclocdiff 0 diff))
+                            (syntax+diff->srclocplus loc-stx diff)))
+             (loop args))])))
 
 (begin-for-syntax
   ;; XXX TODO srcpluss's in the syntax properties may be combined from macro invocations
@@ -120,17 +149,21 @@
           [(cons ar dr) (and (eq-loop? ar) (eq-loop? dr))])))
     (unless all-equal?
       (log-warning "rxexpr:stage-at-exp-srclocplus: source locations are not equal: ~s" srcplusss))
-    (define locs
-      (for/list ([assoc-loc (in-vector srcpluss)])
-        (cond
-          [(cdr assoc-loc)
-           (define-values (stx locdiff)
-             (srclocplus->syntax+diff (cdr assoc-loc)))
-           #`(cons '#,(car assoc-loc)
-                   (syntax+diff->srclocplus (quote-syntax #,stx) '#,locdiff))]
-          [else
-           #`'(#,(car assoc-loc) . #f)])))
-    #`(list . #,locs))
+    (define locs-args
+      (append*
+       (for/list ([assoc-loc (in-vector srcpluss)]
+                  #:when (and (cdr assoc-loc)
+                              (not (zero? (srclocplus-span (cdr assoc-loc))))))
+         (define-values (stx locdiff)
+           (srclocplus->syntax+diff (cdr assoc-loc)))
+         (list #`'#,(car assoc-loc)
+               #`(quote-syntax #,stx)
+               #`'#,(if (zero? (srclocdiff-line-span locdiff))
+                        (srclocdiff-next-column locdiff)
+                        locdiff)))))
+    (if (positive? (vector-length srcpluss))
+        #`(make-locs-assoc-list . #,locs-args)
+        #'null))
 
   (struct rxwrapper (internal-fun internal-id)
     #:property prop:procedure
@@ -143,9 +176,12 @@
          (define srcpluss (syntax-property stx 'at-exp-srclocplus))
          (with-disappeared-uses (record-disappeared-uses #'tgt)
            (datum->syntax stx
-                          (list* (rxwrapper-internal-fun self)
-                                 (if srcpluss (stage-at-exp-srclocplus srcpluss) #'null)
-                                 (syntax-e #'(args ...)))
+                          (cond
+                            [srcpluss
+                             (list* (rxwrapper-internal-fun self)
+                                    (stage-at-exp-srclocplus srcpluss)
+                                    (syntax-e #'(args ...)))]
+                            [(cons (rxwrapper-internal-id self) (syntax-e #'(args ...)))])
                           stx))]))
     #:transparent)
 
@@ -175,10 +211,12 @@
 (define-syntax-parse-rule (define/loc (~var header (nary-locs-header #'here))
                             body-expr:expr
                             ...+)
+  #:with fun-impl-def (syntax/loc this-syntax
+                        (define header.internal-fun-header
+                          body-expr
+                          ...))
   (begin
-    (define header.internal-fun-header
-      body-expr
-      ...)
+    fun-impl-def
     (define header.papp-header header.papp-expr)
     (define-syntax header.name
       (rxwrapper (quote-syntax header.internal-fun-id) (quote-syntax header.papp-fun-id)))))
