@@ -1,8 +1,7 @@
 #lang info
 
 (define collection 'multi)
-(define build-deps
-  '("at-exp-lib"))
+(define build-deps '())
 (define deps
   '("base"))
 

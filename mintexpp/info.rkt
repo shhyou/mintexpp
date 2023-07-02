@@ -1,12 +1,11 @@
 #lang info
 
 (define collection 'multi)
-(define build-deps '())
 (define deps
   '("mintexpp-reader-lib"
     "mintexpp-lib"
     "mintexpp-tex-lib"))
-(define update-implies
+(define implies
   '("mintexpp-reader-lib"
     "mintexpp-lib"
     "mintexpp-tex-lib"))
