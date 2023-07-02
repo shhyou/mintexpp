@@ -25,30 +25,26 @@
   ;; module path
   mintexpp/core
 
-  #:info mintexpp-info
+  #:info mintexpp-core-info
 
   #:whole-body-readers? #t
 
   #:read (λ (inp)
            (port-count-lines! inp)
-           (parameterize ([current-readtable (make-base-readtable)])
-             (mintexpp-read-inside inp)))
+           ((dynamic-require 'scribble/reader 'read-inside) inp))
 
   #:read-syntax (λ (src inp)
                   (port-count-lines! inp)
-                  (parameterize ([current-readtable (make-base-readtable)])
-                    (mintexpp-read-syntax-inside src inp)))
+                  ((dynamic-require 'scribble/reader 'read-syntax-inside) src inp))
 
-  (require mintexpp/at-reader)
-
-  (define (mintexpp-info key defval default)
+  (define (mintexpp-core-info key defval default)
     (case key
       [(color-lexer)
        ((dynamic-require 'syntax-color/scribble-lexer 'make-scribble-inside-lexer))]
       [(drracket:indentation)
        (dynamic-require 'scribble/private/indentation 'determine-spaces)]
       [(drracket:default-filters)
-       `(["Preprocess Article" "*.mtd"])]
+       `(["Preprocessed Article" "*.mtd"])]
       [(drracket:default-extension)
        "mtd"]
       [else
