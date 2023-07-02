@@ -4,9 +4,9 @@
          "top.rkt"
          mintexpp/at-reader
          mintexpp/srclocplus
+         mintexpp/private/syntax-srcloc ;; adapter of racket/syntax-srcloc
          (for-syntax racket/base syntax/parse)
          syntax/wrap-modbeg
-         racket/syntax-srcloc
          racket/match
          racket/pretty)
 
