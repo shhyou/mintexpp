@@ -38,7 +38,14 @@
   (srclocdiff (srclocplus-line-span loc+) (srclocplus-next-column loc+)))
 
 (define (srclocplus->syntax loc+ #:context [context-stx #f])
-  (datum->syntax context-stx 'locplus (srclocplus->srcloc loc+)))
+  (define srcloc (srclocplus->srcloc loc+))
+  (datum->syntax context-stx
+                 'locplus
+                 `#(,(srcloc-source srcloc)
+                    ,(srcloc-line srcloc)
+                    ,(srcloc-column srcloc)
+                    ,(srcloc-position srcloc)
+                    ,(srcloc-span srcloc))))
 
 (define (srclocplus->syntax+diff loc+ #:context [context-stx #f])
   (values (srclocplus->syntax loc+ #:context context-stx)
