@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require racket/syntax-srcloc)
+(require "private/syntax-srcloc.rkt")
 
 (provide (struct-out srclocplus)
          (struct-out srclocdiff)
