@@ -102,7 +102,14 @@
              (parameterize ([current-namespace (make-base-empty-namespace)])
                (namespace-attach-module (namespace-anchor->namespace ns-here) 'racket)
                (when *load-errortrace?
-                 (dynamic-require 'errortrace #f))
+                 (with-handlers ([exn:fail:filesystem:missing-module?
+                                  (λ (e)
+                                    ((error-display-handler) (string-append
+                                                              "Unable to load errortrace: "
+                                                              (exn-message e))
+                                                             e)
+                                    (set! *load-errortrace? #f))])
+                   (dynamic-require 'errortrace #f)))
                (printf "Rendering ~a\n" (car file-names))
                ((dynamic-require 'mintexpp 'clear-extra-dependencies!))
                (render-file resolved-file-name #:quiet? #f #:cache? *cache*?)
