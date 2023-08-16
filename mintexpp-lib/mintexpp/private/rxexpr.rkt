@@ -2,9 +2,8 @@
 
 (require racket/match
          (for-syntax racket/base racket/list racket/match racket/syntax syntax/transformer
-                     syntax/parse "function-header.rkt"
+                     syntax/parse/pre "function-header.rkt"
                      mintexpp/srclocplus)
-         syntax/parse/define
          mintexpp/srclocplus)
 
 (provide (struct-out rxexpr)
@@ -208,18 +207,20 @@
                            #`(apply header*.papp-expr null . fmls.apps))])
   )
 
-(define-syntax-parse-rule (define/loc (~var header (nary-locs-header #'here))
-                            body-expr:expr
-                            ...+)
-  #:with fun-impl-def (syntax/loc this-syntax
-                        (define header.internal-fun-header
-                          body-expr
-                          ...))
-  (begin
-    fun-impl-def
-    (define header.papp-header header.papp-expr)
-    (define-syntax header.name
-      (rxwrapper (quote-syntax header.internal-fun-id) (quote-syntax header.papp-fun-id)))))
+(define-syntax (define/loc stx)
+  (syntax-parse stx
+    [(_ (~var header (nary-locs-header #'here))
+        body-expr:expr
+        ...+)
+     #:with fun-impl-def (syntax/loc this-syntax
+                           (define header.internal-fun-header
+                             body-expr
+                             ...))
+     #'(begin
+         fun-impl-def
+         (define header.papp-header header.papp-expr)
+         (define-syntax header.name
+           (rxwrapper (quote-syntax header.internal-fun-id) (quote-syntax header.papp-fun-id))))]))
 
 (define SPLICE-TAG '@)
 (define/loc (@ locs . elements) (rxexpr locs SPLICE-TAG '() elements))

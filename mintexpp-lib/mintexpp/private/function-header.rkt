@@ -2,7 +2,7 @@
 ;; Added the application syntax to the formals syntax classes
 #lang racket/base
 
-(require racket/list racket/syntax syntax/parse syntax/parse/lib/function-header)
+(require racket/list racket/syntax syntax/parse/pre syntax/parse/lib/function-header)
 
 (provide formals+app-no-rest formals+app)
 

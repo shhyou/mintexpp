@@ -5,7 +5,7 @@
          mintexpp/at-reader
          mintexpp/srclocplus
          mintexpp/private/syntax-srcloc ;; adapter of racket/syntax-srcloc
-         (for-syntax racket/base syntax/parse)
+         (for-syntax racket/base syntax/parse/pre)
          syntax/wrap-modbeg
          racket/match
          racket/pretty)

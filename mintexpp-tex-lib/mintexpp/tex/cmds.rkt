@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require (for-syntax racket/base racket/syntax syntax/parse)
+(require (for-syntax racket/base racket/syntax syntax/parse/pre)
          mintexpp/rxexpr mintexpp/top)
 
 (provide define-constant-commands
