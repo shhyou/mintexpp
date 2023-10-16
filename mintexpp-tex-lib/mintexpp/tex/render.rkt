@@ -129,7 +129,7 @@
                               '("{")
                               handled-elements
                               '("}"))])))
-                (list (format "\\end{~a}\n" tag)))]
+                (list (format "\\end{~a}" tag)))]
        [else
         (append* (list (format "\\~a" tag))
                  (for/list ([datums (in-list datumss)]
