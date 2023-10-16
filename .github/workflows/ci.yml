@@ -23,7 +23,7 @@ jobs:
           sudo: never
       - name: Installing mintexpp and its dependencies
         run: raco pkg install --no-docs --auto mintexpp
-      - name: Compiling mintexpp and building its docs
+      - name: Checking mintexpp package dependencies
         run: raco setup --check-pkg-deps --pkgs mintexpp-reader-lib mintexpp-lib mintexpp-tex-lib mintexpp
       - name: Testing mintexpp
         run: raco test -x -p mintexpp
