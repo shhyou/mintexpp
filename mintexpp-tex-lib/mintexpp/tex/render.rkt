@@ -129,7 +129,10 @@
                               '("{")
                               handled-elements
                               '("}"))])))
-                (list (format "\\end{~a}" tag)))]
+                (list (format "\\end{~a}" tag)
+                      (if (is-pretty-print-newline-tex-command? tag)
+                          '("\n")
+                          '())))]
        [else
         (append* (list (format "\\~a" tag))
                  (for/list ([datums (in-list datumss)]
