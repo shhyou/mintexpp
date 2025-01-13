@@ -1,8 +1,8 @@
 #lang racket/base
 
 (require racket/match
-         (for-syntax racket/base racket/list racket/match racket/syntax syntax/transformer
-                     syntax/parse/pre "function-header.rkt"
+         (for-syntax racket/base racket/list racket/match racket/syntax syntax/define
+                     racket/string syntax/parse/pre "function-header.rkt"
                      mintexpp/srclocplus)
          mintexpp/srclocplus)
 
@@ -133,6 +133,11 @@
                             (syntax+diff->srclocplus loc-stx diff)))
              (loop args))])))
 
+(define-syntax (lambda/locs stx)
+  (raise-syntax-error 'lambda/locs
+                      "cannot be used out of context"
+                      stx))
+
 (begin-for-syntax
   ;; XXX TODO srcpluss's in the syntax properties may be combined from macro invocations
   (define (stage-at-exp-srclocplus srcplusss)
@@ -184,43 +189,92 @@
                           stx))]))
     #:transparent)
 
-  (define-syntax-class (nary-locs-header ctxt-stx)
-    #:attributes (name internal-fun-id papp-fun-id internal-fun-header papp-header papp-expr)
-    [pattern (name:id loc:id . fmls:formals+app)
-      #:with internal-fun-id (format-id ctxt-stx "~a.mk" #'name #:source #'name)
-      #:with papp-fun-id (format-id ctxt-stx "~a.mk/locs" #'name #:source #'name)
-      #:with args #'(loc . fmls)
-      #:with internal-fun-header #'(internal-fun-id loc . fmls)
-      #:with papp-header #'(papp-fun-id . fmls)
-      #:with papp-expr (if (list? (syntax-e #'fmls))
-                           #`(internal-fun-id null . fmls.apps)
-                           #`(apply internal-fun-id null . fmls.apps))]
-    [pattern ((~var header* (nary-locs-header ctxt-stx)) loc:id . fmls:formals+app)
-      #:with name #'header*.name
-      #:with internal-fun-id #'header*.internal-fun-id
-      #:with papp-fun-id #'header*.papp-fun-id
-      #:with args #'(loc . fmls)
-      #:with internal-fun-header #'(header*.internal-fun-header loc . fmls)
-      #:with papp-header #'(header*.papp-header . fmls)
-      #:with papp-expr (if (list? (syntax-e #'fmls))
-                           #`(header*.papp-expr null . fmls.apps)
-                           #`(apply header*.papp-expr null . fmls.apps))])
+  (define (format-formals formals-id)
+    (define formals-str
+      (for/list ([fml (in-list formals-id)])
+        (symbol->string (syntax-e fml))))
+    (string-join formals-str ","))
+
+  (define (make-internal/papp-lambdas stx name params-name papp-expr)
+    (syntax-parse stx
+      #:literals (lambda/locs)
+      [(lambda/locs (loc:id . fmls:formals+app)
+                    (~and nested-lambda (lambda/locs . _)))
+       #:do [(define-values (internal-lambda papp-lambda)
+               (make-internal/papp-lambdas
+                #'nested-lambda
+                name
+                (format-symbol "~a/~a"
+                               params-name
+                               (format-formals (syntax-e (attribute fmls.params))))
+                (if (list? (syntax-e #'fmls))
+                    #`(#,papp-expr null . fmls.apps)
+                    #`(apply #,papp-expr null . fmls.apps))))]
+       #:with internal-lambda internal-lambda
+       #:with papp-lambda papp-lambda
+       (values
+        ;; internal-lambda
+        (syntax-property (syntax/loc stx
+                           (lambda (loc . fmls)
+                             internal-lambda))
+                         'inferred-name
+                         (format-symbol "~a~a" name params-name))
+        ;; make-papp-lambda
+        (syntax-property (syntax/loc stx
+                           (lambda fmls
+                             papp-lambda))
+                         'inferred-name
+                         (format-symbol "~a~a" name params-name)))]
+      [(lambda/locs (loc:id . fmls:formals+app)
+                    body:expr ...+)
+       (values
+        ;; internal-lambda
+        (syntax-property (syntax/loc stx
+                           (lambda (loc . fmls)
+                             body ...))
+                         'inferred-name
+                         (format-symbol "~a~a" name params-name))
+        ;; papp-lambda
+        (syntax-property (quasisyntax/loc stx
+                           (lambda fmls
+                             #,(if (list? (syntax-e #'fmls))
+                                   #`(#,papp-expr null . fmls.apps)
+                                   #`(apply #,papp-expr null . fmls.apps))))
+                         'inferred-name
+                         (format-symbol "~a~a" name params-name)))]))
+
+  (define-syntax-class nary-locs-header
+    #:attributes (name)
+    [pattern (name:id loc:id . fmls:formals+app)]
+    [pattern (header:nary-locs-header loc:id . fmls:formals+app)
+      #:with name (attribute header.name)])
   )
 
+(require (for-syntax racket/pretty))
 (define-syntax (define/loc stx)
   (syntax-parse stx
-    [(_ (~var header (nary-locs-header #'here))
-        body-expr:expr
-        ...+)
-     #:with fun-impl-def (syntax/loc this-syntax
-                           (define header.internal-fun-header
-                             body-expr
-                             ...))
+    [(_ header:nary-locs-header body:expr ...+)
+     #:do [(define-values (_name rhs)
+             (normalize-definition
+              stx
+              #'lambda/locs ;; the inserted lambda on the RHS
+              #t ;; check that syntax-local-context is not an expression context
+              #t))] ;; keywords
+     #:with internal-fun-id (format-id #'here "~a" #'header.name #:source #'header.name)
+     #:with papp-fun-id (format-id #'here "~a/locs" #'header.name #:source #'header.name)
+     #:do [(define-values (internal-lambda papp-lambda)
+             (make-internal/papp-lambdas rhs #'internal-fun-id '|| #'internal-fun-id))]
+     #:with internal-lambda internal-lambda
+     #:with papp-lambda papp-lambda
+     #:with fun-impl-def (syntax/loc stx
+                           (define internal-fun-id
+                             internal-lambda))
      #'(begin
          fun-impl-def
-         (define header.papp-header header.papp-expr)
+         (define papp-fun-id papp-lambda)
          (define-syntax header.name
-           (rxwrapper (quote-syntax header.internal-fun-id) (quote-syntax header.papp-fun-id))))]))
+           (rxwrapper (quote-syntax internal-fun-id)
+                      (quote-syntax papp-fun-id))))]))
 
 (define SPLICE-TAG '@)
 (define/loc (@ locs . elements) (rxexpr locs SPLICE-TAG '() elements))
