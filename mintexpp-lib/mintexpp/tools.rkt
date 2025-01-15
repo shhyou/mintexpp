@@ -30,9 +30,11 @@
               (>= (file-or-directory-modify-seconds output-file)
                   (file-or-directory-modify-seconds zo-file))))
      (when (not quiet?)
+       (printf "Rendering ~a\n" file-name)
        (printf " [already up-to-date at ~s]\n"
                (path->string (find-relative-path base output-file))))]
     [make-doc
+     (printf "Rendering ~a\n" file-name)
      (define render-from-template
        (dynamic-require `(submod ,file-name ,MINTEXPP-SUBMOD) 'render-from-template))
      (define rendered-result
@@ -65,6 +67,7 @@
 
   (define-namespace-anchor ns-here)
 
+  (define *quiet?* #t)
   (define *cache*? #f)
   (define *load-errortrace? #f)
 
@@ -73,6 +76,7 @@
      #:program (short-program+command-name)
      #:once-each
      ["--cache" "Skip rendered files" (set! *cache*? #t)]
+     [("-v" "--verbose") "Verbose mode" (set! *quiet?* #f)]
      ["--errortrace" "Load errortrace" (set! *load-errortrace? #t)]
      #:args file1
      (if (not (null? file1))
@@ -110,9 +114,8 @@
                                                              e)
                                     (set! *load-errortrace? #f))])
                    (dynamic-require 'errortrace #f)))
-               (printf "Rendering ~a\n" (car file-names))
                ((dynamic-require 'mintexpp 'clear-extra-dependencies!))
-               (render-file resolved-file-name #:quiet? #f #:cache? *cache*?)
+               (render-file resolved-file-name #:quiet? *quiet?* #:cache? *cache*?)
                (values ((dynamic-require 'mintexpp 'get-document-errors))
                        ((dynamic-require 'mintexpp 'get-extra-dependencies)))))
            (define-values (base-path name dir?)
