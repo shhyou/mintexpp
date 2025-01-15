@@ -136,15 +136,16 @@
        (#%plain-module-begin
         #,require-config-mod
         (module* #,MINTEXPP-SUBMOD #f
-          (provide doc the-extension the-render-from-template the-main))
+          (provide make-doc the-extension the-render-from-template the-main))
         content ...
-        (define raw-doc (get-current-doc))
-        (define flat-doc (splice-content raw-doc))
-        (define clean-doc (remove-nonprintable-value flat-doc))
-        (define doc (apply the-root '() clean-doc))
+        (define (eval-raw-document) (get-current-doc))
+        (define (make-doc)
+          (define flat-doc (splice-content (eval-raw-document)))
+          (define clean-doc (remove-nonprintable-value flat-doc))
+          (apply the-root '() clean-doc))
         (module* main racket/base
           (require (submod ".." #,MINTEXPP-SUBMOD))
-          (void (main doc)))))]))
+          (void (main (make-doc))))))]))
 
 (define-syntax doc-wrap-module-begin
   (make-wrapping-module-begin
@@ -232,7 +233,7 @@
 
 (define (load-document file-name)
   (call-with-load-exception-handlers
-   (λ () (dynamic-require `(submod ,file-name ,MINTEXPP-SUBMOD) 'doc))))
+   (λ () (dynamic-require `(submod ,file-name ,MINTEXPP-SUBMOD) 'make-doc))))
 
 (define (display-error/replace-message new-message old-exn)
   ((error-display-handler) new-message (exn:fail new-message (exn-continuation-marks old-exn))))

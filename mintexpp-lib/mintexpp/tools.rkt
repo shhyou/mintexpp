@@ -20,7 +20,7 @@
     (split-path file-name))
   (define zo-file
     (build-path base "compiled" (path-replace-extension name "_rtex.zo")))
-  (define doc ((dynamic-require 'mintexpp 'load-document) file-name))
+  (define make-doc ((dynamic-require 'mintexpp 'load-document) file-name))
   (cond
     [(and cache?
           (file-exists? output-file)
@@ -32,7 +32,7 @@
      (when (not quiet?)
        (printf " [already up-to-date at ~s]\n"
                (path->string (find-relative-path base output-file))))]
-    [doc
+    [make-doc
      (define render-from-template
        (dynamic-require `(submod ,file-name ,MINTEXPP-SUBMOD) 'render-from-template))
      (define rendered-result
@@ -45,7 +45,7 @@
                                      new-error-message
                                      (exn:fail new-error-message (exn-continuation-marks e)))
                                     "")])
-         (render-from-template doc)))
+         (render-from-template (make-doc))))
      (with-output-to-file output-file #:exists 'truncate
        (λ ()
          (let loop ([rendered-result rendered-result])
