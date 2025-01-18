@@ -6,6 +6,6 @@
   '("base"))
 
 (define pkg-desc "The at-expression reader of the Minimal Tex Preprocessor")
-(define version "0.1")
+(define version "0.2")
 (define pkg-authors '(shhyou))
 (define license '(Apache-2.0 OR MIT))
