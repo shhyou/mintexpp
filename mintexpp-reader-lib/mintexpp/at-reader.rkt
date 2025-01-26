@@ -11,7 +11,8 @@
          at-exp-cmd-loc
          at-exp-datums-loc
          at-exp-lines-loc
-         at-exp-loc-of)
+         at-exp-loc-of
+         format-locs)
 
 (define (char->symbol ch input)
   (values 1 (string->symbol (string ch))))
@@ -70,6 +71,20 @@
            (> (srclocplus-span (cdr the-loc)) 0))
       (cdr the-loc)
       #f))
+
+(define (format-locs locs)
+  (define loc (or (at-exp-cmd-loc locs)
+                  (at-exp-datums-loc locs)
+                  (at-exp-lines-loc locs)))
+  (cond
+    [(not loc) ""]
+    [else
+     (define src
+       (if (srclocplus-source loc)
+           (let-values ([(base name dir?) (split-path (srclocplus-source loc))])
+             name)
+           "?"))
+     (format "~a:~a:~a:" src (srclocplus-line loc) (srclocplus-column loc))]))
 
 ;; ============================================================================
 ;; Implements the @-reader macro for embedding text in Racket code.

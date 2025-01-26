@@ -21,6 +21,7 @@
          (for-syntax rxwrapper rxwrapper? rxwrapper-internal-fun rxwrapper-internal-id
                      stage-at-exp-srclocplus)
          define/loc
+         define-arbitrary-procedure/loc
 
          SPLICE-TAG
          @
@@ -272,6 +273,28 @@
          fun-impl-def
          (define papp-fun-id papp-lambda)
          (define-syntax header.name
+           (rxwrapper (quote-syntax internal-fun-id)
+                      (quote-syntax papp-fun-id))))]))
+
+(define (make-papp-keyword-procedure tgt-fun)
+  (define papp-keyword-procedure
+    (make-keyword-procedure
+     (λ (kw kw-vals . args)
+       ;; '() for locs
+       (keyword-apply tgt-fun kw kw-vals '() args))))
+  (if (object-name tgt-fun)
+      (procedure-rename papp-keyword-procedure (object-name tgt-fun))
+      papp-keyword-procedure))
+
+(define-syntax (define-arbitrary-procedure/loc stx)
+  (syntax-parse stx
+    [(_ name:id body:expr)
+     #:with internal-fun-id (format-id #'here "~a" #'name #:source #'name)
+     #:with papp-fun-id (format-id #'here "~a/locs" #'name #:source #'name)
+     #'(begin
+         (define internal-fun-id body)
+         (define papp-fun-id (make-papp-keyword-procedure internal-fun-id))
+         (define-syntax name
            (rxwrapper (quote-syntax internal-fun-id)
                       (quote-syntax papp-fun-id))))]))
 

@@ -262,19 +262,6 @@
                 [else (string-append "error: " (exn-message e))])
           e)]
         ['syntax
-         (define (format-locs locs)
-           (define loc (or (at-exp-cmd-loc locs)
-                           (at-exp-datums-loc locs)
-                           (at-exp-lines-loc locs)))
-           (cond
-             [(not loc) ""]
-             [else
-              (define src
-                (if (srclocplus-source loc)
-                    (let-values ([(base name dir?) (split-path (srclocplus-source loc))])
-                      name)
-                    "?"))
-              (format "~a:~a:~a:" src (srclocplus-line loc) (srclocplus-column loc))]))
          (eprintf "error near ~a: " (srcloc->string (syntax-srcloc (errinfo-loc err))))
          (eprintf "non-printable value: ~s\n" (hash-ref (errinfo-data err) 'value))
          (when (not (null? (hash-ref (errinfo-data err) 'context)))

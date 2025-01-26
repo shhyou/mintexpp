@@ -11,6 +11,6 @@
     "mintexpp-tex-lib"))
 
 (define pkg-desc "Minimal Tex Preprocessor, inspired by Pollen")
-(define version "0.2")
+(define version "0.3")
 (define pkg-authors '(shhyou))
 (define license '(Apache-2.0 OR MIT))
