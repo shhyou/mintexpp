@@ -250,7 +250,6 @@
       #:with name (attribute header.name)])
   )
 
-(require (for-syntax racket/pretty))
 (define-syntax (define/loc stx)
   (syntax-parse stx
     [(_ header:nary-locs-header body:expr ...+)
