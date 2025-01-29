@@ -14,3 +14,4 @@
 (define version "0.3")
 (define pkg-authors '(shhyou))
 (define license '(Apache-2.0 OR MIT))
+(define module-suffixes '(#"rtex"))
