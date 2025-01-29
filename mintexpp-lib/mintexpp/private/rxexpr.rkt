@@ -277,14 +277,22 @@
                       (quote-syntax papp-fun-id))))]))
 
 (define (make-papp-keyword-procedure tgt-fun)
-  (define papp-keyword-procedure
-    (make-keyword-procedure
-     (λ (kw kw-vals . args)
-       ;; '() for locs
-       (keyword-apply tgt-fun kw kw-vals '() args))))
-  (if (object-name tgt-fun)
-      (procedure-rename papp-keyword-procedure (object-name tgt-fun))
-      papp-keyword-procedure))
+  (define name-sym/#f
+    (if (and (object-name tgt-fun) (symbol? tgt-fun))
+        (object-name tgt-fun)
+        #f))
+  (define-values (required-kws allowed-kws)
+    (procedure-keywords tgt-fun))
+  (define (papp-keyword-procedure kw kw-vals . args)
+    ;; '() for locs
+    (keyword-apply tgt-fun kw kw-vals '() args))
+  (procedure-reduce-keyword-arity-mask
+   (make-keyword-procedure
+    papp-keyword-procedure)
+   (procedure-arity-mask tgt-fun)
+   required-kws
+   allowed-kws
+   name-sym/#f))
 
 (define-syntax (define-arbitrary-procedure/loc stx)
   (syntax-parse stx
