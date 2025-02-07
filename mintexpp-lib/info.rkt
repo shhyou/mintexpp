@@ -9,6 +9,6 @@
     "mintexpp-reader-lib"))
 
 (define pkg-desc "Implementation of the Minimal Tex Preprocessor")
-(define version "0.3")
+(define version "0.3.1")
 (define pkg-authors '(shhyou))
 (define license '(Apache-2.0 OR MIT))

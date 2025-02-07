@@ -98,8 +98,7 @@
               (format-locs locs)))
      (rxexpr locs 'item `((datums ,(car maybe-label-contents))) (cdr maybe-label-contents))]
     [else
-     (rxexpr locs 'item '() maybe-label-contents)])
-  (rxexpr locs 'item '() maybe-label-contents))
+     (rxexpr locs 'item '() maybe-label-contents)]))
 
 (define/loc (lquote locs . elements)
   (rxexpr locs 'quote '() elements))
